@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive Map — Districts + Cancelled Projects</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://unpkg.com">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100vh; }
+    .controls { position: absolute; top: 10px; left: 10px; background: #fff; padding: 10px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 1000; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .controls label { display: block; font-size: 14px; margin: 6px 0; }
+    .row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+    select { padding:4px 6px; font-size:14px; }
+    button { padding:5px 9px; font-size:13px; cursor:pointer; }
+    .popup h4 { margin: 0 0 4px 0; font-size: 16px; }
+    .popup .meta { font-size: 13px; line-height: 1.35; }
+    .popup .meta span { display:block; }
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="controls">
+    <strong>Layers</strong>
+    <label><input type="checkbox" id="jobsCb" checked /> Cancelled Projects</label>
+    <label><input type="checkbox" id="cdCb" /> U.S. Congressional Districts (119th)</label>
+
+    <div class="row">
+      <label for="stateSelect" style="margin:0">State SLDU/SLDL:</label>
+      <select id="stateSelect">
+        <option value="">Select state/territory (FIPS)</option>
+        <option value="01">01 AL</option><option value="02">02 AK</option>
+        <option value="04">04 AZ</option><option value="05">05 AR</option>
+        <option value="06">06 CA</option><option value="08">08 CO</option>
+        <option value="09">09 CT</option><option value="10">10 DE</option>
+        <option value="11">11 DC</option><option value="12">12 FL</option>
+        <option value="13">13 GA</option><option value="15">15 HI</option>
+        <option value="16">16 ID</option><option value="17">17 IL</option>
+        <option value="18">18 IN</option><option value="19">19 IA</option>
+        <option value="20">20 KS</option><option value="21">21 KY</option>
+        <option value="22">22 LA</option><option value="23">23 ME</option>
+        <option value="24">24 MD</option><option value="25">25 MA</option>
+        <option value="26">26 MI</option><option value="27">27 MN</option>
+        <option value="28">28 MS</option><option value="29">29 MO</option>
+        <option value="30">30 MT</option><option value="31">31 NE</option>
+        <option value="32">32 NV</option><option value="33">33 NH</option>
+        <option value="34">34 NJ</option><option value="35">35 NM</option>
+        <option value="36">36 NY</option><option value="37">37 NC</option>
+        <option value="38">38 ND</option><option value="39">39 OH</option>
+        <option value="40">40 OK</option><option value="41">41 OR</option>
+        <option value="42">42 PA</option><option value="44">44 RI</option>
+        <option value="45">45 SC</option><option value="46">46 SD</option>
+        <option value="47">47 TN</option><option value="48">48 TX</option>
+        <option value="49">49 UT</option><option value="50">50 VT</option>
+        <option value="51">51 VA</option><option value="53">53 WA</option>
+        <option value="54">54 WV</option><option value="55">55 WI</option>
+        <option value="56">56 WY</option>
+        <option value="60">60 AS</option><option value="66">66 GU</option>
+        <option value="69">69 MP</option><option value="72">72 PR</option>
+        <option value="78">78 VI</option>
+      </select>
+      <select id="stateAbbrSelect" title="State postal code">
+        <option value="">Postal code</option>
+        <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option><option>CT</option><option>DE</option><option>DC</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option><option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option><option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option><option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option><option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option><option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option><option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option><option>WI</option><option>WY</option><option>AS</option><option>GU</option><option>MP</option><option>PR</option><option>VI</option>
+      </select>
+      <button id="loadStateBtn" title="Load SLDU/SLDL for selected state">Load</button>
+      <button id="clearStateBtn" title="Clear state layers">Clear</button>
+    </div>
+    <div style="font-size:12px;color:#555;margin-top:8px">Tip: district layers can be large; load one state at a time.</div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@mapbox/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/leaflet-kmz@1.0.0/dist/Leaflet.KMZ.js"></script>
+  <script src="./js/main.js"></script>
+</body>
+</html>
